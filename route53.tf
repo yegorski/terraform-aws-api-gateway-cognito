@@ -22,9 +22,9 @@ resource "aws_route53_record" "api" {
   zone_id = "${aws_route53_zone.zone.id}"
 
   alias {
-    evaluate_target_health = false
     name                   = "${aws_api_gateway_domain_name.domain_name.cloudfront_domain_name}"
     zone_id                = "${aws_api_gateway_domain_name.domain_name.cloudfront_zone_id}"
+    evaluate_target_health = false
   }
 }
 
@@ -35,12 +35,24 @@ resource "aws_route53_record" "root_record" {
   zone_id = "${aws_route53_zone.zone.id}"
 
   alias {
-    evaluate_target_health = false
     name                   = "api.${var.domain_name}"
     zone_id                = "${aws_route53_zone.zone.id}"
+    evaluate_target_health = false
   }
 
   depends_on = [
     "aws_route53_record.api",
   ]
+}
+
+resource "aws_route53_record" "auth" {
+  name    = "auth.${var.domain_name}"
+  type    = "A"
+  zone_id = "${aws_route53_zone.zone.id}"
+
+  alias {
+    name                   = "${aws_cognito_user_pool_domain.domain.cloudfront_distribution_arn}"
+    zone_id                = "Z2FDTNDATAQYW2"  # AWS' global zone ID
+    evaluate_target_health = false
+  }
 }

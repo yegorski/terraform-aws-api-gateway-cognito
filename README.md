@@ -1,22 +1,26 @@
-# Terraform API Gateway with Cognito Authentication
+# API Gateway with Cognito Authentication Terraform Module
 
-Terraform call code for creating an AWS API Gateway with Cognito authentication.
+Terraform module to create an AWS API Gateway with Cognito authentication.
 
 ## Overview
 
+![aws-api-gateway-cognito-authentication](files/aws-api-gateway-cognito-authentication.png)
+
 The module creates the following AWS resources.
 
-1. ACM Certificate:
+1. ACM Certificate
    1. Wildcard certificate for specified domain, e.g. `*.demo.yegorius.com`.
    1. Created using [AWS Certificate Manager (ACM) Terraform module][].
-1. API Gateway:
+1. API Gateway
    1. API with Lambda integration.
    1. Custom domain name for the API.
       1. This creates a CloudFront distribution with the wildcard certificate referenced above.
       1. The custom domain name is `api.demo.yegorius.com`. This is the actual endpoint of the API.
    1. An API endpoint created to test the end-to-end setup.
       1. GET on <https://api.demo.yegorius.com/v1/hello_world>
-1. Cognit:
+1. Lambda
+   1. A function that API Gateway endpoint points to.
+1. Cognito
    1. Cognito User Pool.
       1. Only an App Client is created. This means that this Cognito setup is only able to perform `client_credentials` authentication flow.
       1. This type of flow is used for granting an application access to the API Gateway API or for server-to-server communication.
@@ -28,51 +32,32 @@ The module creates the following AWS resources.
       1. A user-friendly Cognito DNS name which clients query in order to obtain `access_token`, e.g. <https://auth.demo.yegorius.com>.
    1. Resource Server.
       1. The URL that points to the resource that needs to be authenticated, e.g. <https://api.demo.yegorius.com>. In order to perform API calls to this API, the client needs the `acess_token` from Cognito.
-1. Route53:
+1. Route53
    1. DNS Zone, e.g. `demo.yegorius.com`
       1. This zone manages DNS records inside the domain name.
       1. In my case, I have `yegorius.com` registered on GoDaddy. There, I created NS records to point to this DNS zone in AWS.
-   1. `A` record alias pointing to the CloudFront distribution referenced above.
+   1. `api.demo.yegorius.com` `A` record alias pointing to API Gateway's CloudFront distribution.
+   1. `auth.demo.yegorius.com` `A` record alias pointing to Cognito's CloudFront distribution.
 
 ## Usage
 
-1. Fork the repo
-1. Update bucket name in `state.tf`
-1. Create a `terraform.tfvars` file with the following variables:
+Replace `aws_account_id`, `domain_name`, and other variables are desired.
 
-    ```terraform
-    aws_account_id = "YOUR_AWS_ACCOUNT_ID"
+```terraform
+module "api_gateway_cognito" {
+  source = "git::https://github.com/yegorski/terraform-aws-api-gateway-cognito.git?ref=master"
 
-    domain_name = "DOMAIN_NAME"
+  aws_account_id = "YOUR_AWS_ACCOUNT_ID"
+  domain_name    = "demo.yegorius.com"  # Zone name, with DNS delegation from your DNS provider
+  name           = "api"
+  region         = "us-east-1"
 
-    name = "api"
-
-    region = "YOUR_AWS_REGION"
-
-    tags = {
-        Owner       = "YOUR_USERNAME"
-        Environment = "production"
-    }
-    ```
-
-1. Run `terraform init && terraform apply`
-
-## Manual Steps
-
-Below are the options that needs to be added manually after an API environment is provisioned.
-
-### Cognito Custom Domain
-
-1. Go to [Cognito AWS Service][].
-1. Manage User Pools ▶️ select user pool.
-1. App integration ▶️ Domain name.
-1. Add the `auth.${var.domain_name}` domain.
-1. Specify the `*.{var.domain_name}` certificate.
-1. Copy the resulting `Alias target`.
-1. Go to [Route53 AWS Service][].
-1. Create an A alias DNS record in the `{var.domain_name}` zone: `auth.{var.domain_name}` ▶️ alias target CloudFront distribution copied in the step above.
-
-Note that at the time of this writing, provisioning a Cognito Custom Domain currently times out on `terraform apply` for me. Killing the ongoing apply results in a locked Terraform state.
+  tags = {
+    Owner       = "yegorski"
+    Environment = "production"
+  }
+}
+```
 
 ## Testing
 

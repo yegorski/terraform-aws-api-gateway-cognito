@@ -7,12 +7,12 @@ resource "aws_lambda_permission" "apigw_lambda" {
 }
 
 resource "aws_lambda_function" "lambda" {
-  filename         = "lambda.zip"
+  filename         = "${path.module}/lambda.zip"
   function_name    = "hello_world"
   role             = "${aws_iam_role.role.arn}"
   handler          = "lambda.lambda_handler"
   runtime          = "python2.7"
-  source_code_hash = "${filebase64sha256("lambda.zip")}"
+  source_code_hash = "${filebase64sha256("${path.module}/lambda.zip")}"
 }
 
 resource "aws_iam_role" "role" {
